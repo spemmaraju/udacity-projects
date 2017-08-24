@@ -1,0 +1,8 @@
+List of files:
+
+1. osmproject_final_v1.py - Final python file with the complete code for the project
+2. schema.py - Python file with the schema to be validated against
+3. OSM_Project.pdf - PDF file containing the answers to the project rubric
+4. sample2.osm - Sample data from the complete dataset
+5. Data Source.txt - file with link to data source and description
+6. References.txt - Sources referred to during the project

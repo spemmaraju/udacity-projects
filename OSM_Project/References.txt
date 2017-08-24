@@ -1,0 +1,6 @@
+Sources referred to:
+
+1. Udacity OSM case study
+2. Stackoverflow.com
+3. Python documentation on Regular Expressions
+4. Metro extracts from Mapzen.com

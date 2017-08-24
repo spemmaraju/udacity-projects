@@ -1,0 +1,4 @@
+Source data:
+https://s3.amazonaws.com/metro-extracts.mapzen.com/boston_massachusetts.osm.bz2
+
+The above dataset is the metro extract for Boston, Massachusetts. The reason I chose the dataset is because I studied for one year at Boston University and I am familiar with the city which made it easier to work with and identify a few issues.
