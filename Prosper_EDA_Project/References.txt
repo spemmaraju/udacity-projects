@@ -1,0 +1,17 @@
+https://stackoverflow.com/questions/30233590/how-to-draw-a-ggplot2-with-facet-wrap-showing-percentages-from-each-group-not
+
+https://stackoverflow.com/questions/18332520/how-to-put-percentage-label-in-ggplot-when-geom-text-is-not-suitable
+
+https://stackoverflow.com/questions/5411979/state-name-to-abbreviation-in-r
+
+https://cran.r-project.org/web/packages/fiftystater/vignettes/fiftystater.html
+
+https://stackoverflow.com/questions/5290003/how-to-set-legend-alpha-with-ggplot2
+
+https://stackoverflow.com/questions/25061822/ggplot-geom-text-font-size-control
+
+https://stackoverflow.com/questions/17742522/ggplot-inside-a-function-when-does-it-not-recognize-arguments-and-when-does-it
+
+
+
+

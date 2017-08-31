@@ -1,0 +1,731 @@
+EDA of Prosper Loan Dataset by Subhash Bharadwaj Pemmaraju
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(forcats)
+library(dplyr)
+library(fiftystater)
+library(mapproj)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_the_Data}
+# Load the Data
+loans <- read.csv('C:/Users/Subash Bharadwaj/Desktop/prosperLoanData.csv', 
+                  header = T, na.strings = c(""," ", "NA"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Functions}
+# Date Conversion
+date_convert <- function(var1, format) {
+formatted <-  as.Date(var1, format = format)
+return(formatted)
+}
+
+# Bar plot with percentages
+bar_plot <- function(var1, plotdata, xlabel, title) {
+  ggplot(aes_string(x = var1, y = "..count../sum(..count..)"),data = plotdata)+
+    geom_bar()+scale_y_continuous(labels = scales::percent)+labs(x = xlabel, y='Percent')+
+    geom_text(aes(label = scales::percent(..count../sum(..count..)), y= ..count../sum(..count..) ), stat= "count", vjust = 0, size=rel(2.5))+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))+
+    ggtitle(title)
+}
+
+# Generic Plot Function
+plot <- function(x, y, plotdata, xlab, ylab) {
+  ggplot(aes_string(x=x, y=y), data=plotdata)+
+    labs(x=xlab, y=ylab)
+}
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Format_the_data}
+# Convert to date format
+loans$ListingCreationDate<-
+  date_convert(loans$ListingCreationDate, '%Y-%m-%d %H:%M:%S')
+
+loans$ClosedDate<-
+  date_convert(loans$ClosedDate, '%Y-%m-%d %H:%M:%S')
+  
+loans$DateCreditPulled<-
+  date_convert(loans$DateCreditPulled, '%Y-%m-%d %H:%M:%S')
+
+loans$FirstRecordedCreditLine<-
+  date_convert(loans$FirstRecordedCreditLine, '%Y-%m-%d %H:%M:%S')
+
+loans$LoanOriginationDate<-
+  date_convert(loans$LoanOriginationDate, '%Y-%m-%d %H:%M:%S')
+
+# Re-ordering the credit rating scales
+loans$ProsperRating..Alpha.<-
+  factor(loans$ProsperRating..Alpha., 
+         levels = c("AA", "A", "B", "C", "D", "E", "HR"))
+
+loans$CreditGrade<-
+  factor(loans$CreditGrade, 
+         levels = c("AA", "A", "B", "C", "D", "E", "HR", "NC"))
+
+# Re-ordering the Income scales
+loans$IncomeRange<-
+  factor(loans$IncomeRange,levels(loans$IncomeRange)[c(8,1,2,4:6,3,7)])
+
+#Rename Listing Categories
+loans$ListingCategory..numeric.<-factor(loans$ListingCategory..numeric.)
+
+loans$ListingCategory..numeric.<-
+  revalue(loans$ListingCategory..numeric., 
+          c("0" = "NA", "1" = "Debt Consol", "2" = "Home Impr.", 
+            "3" = "Business", "4" = "Personal", "5" = "Student ", 
+            "6" = "Auto", "7" = "Other", "8" = "Baby&Adopt", 
+            "9" = "Boat", "10" = "Cosmetic Proc.", "11" = "Engagement", 
+            "12" = "Green Loan", "13" = "Household Exp.", 
+            "14" = "Large Purch.", "15" = "Medical/Dental", 
+            "16" = "Motorcycle", "17" = "RV", "18" = "Taxes", 
+            "19" = "Vacation", "20" = "Wedding"))
+
+
+# Converting loan terms to factor
+loans$Term<-as.factor(loans$Term)
+
+# Extracting post July 2009 data
+loans1<-subset(loans, ListingCreationDate> as.Date("2009-6-30"))
+
+# Converting format of year of origination
+loans1$YearofOrigination<-format(loans1$LoanOriginationDate, "%Y")
+```
+
+### Structure of the dataset
+
+Prosper is a P2P lending marketplace. The dataset is composed of 100,000+ loans listed on "Prosper", last updated in March, 2014. It contains information on 81 variables that give details about the borrowers, lenders and loan structure. 
+
+### Variables of Interest in the dataset
+
+The main variables of interest in the dataset are:
+
+* Borrower Characteristics
+    * Income Verifiability/Home Ownership
+    * Income Range
+    * Borrower State
+    * Credit Score
+    * Debt to Income Ratio
+
+* Loan Characteristics
+    * Credit Rating
+    * Term of the loan
+    * Borrower Rate
+    * Loan Status
+    * Listing Category
+    * No. of Investors
+    * Estimated Loss
+    * No. of Recommendations
+    * Loan Origination Amount
+
+# Univariate Plots Section
+
+Firstly, Credit Grades are represented by two fields - Credit Grade for loans before July 2009 and Prosper Rating for loans after July 2009. For all 
+subsequent plots, only the data post July 2009 has been considered
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots}
+# Credit Grades have improved overall since 2008
+p1<-plot("CreditGrade", "..count../sum(..count..)", 
+         subset(loans, !is.na(CreditGrade)), 
+         "Pre-2009 Credit Rating",
+         "Percent")+
+  geom_bar()+
+  scale_y_continuous(labels = scales::percent)
+
+p2<-plot("ProsperRating..Alpha.", 
+         "..count../sum(..count..)", 
+         subset(loans, !is.na(ProsperRating..Alpha.)), 
+         "Post-2009 Credit Rating",
+         "Percent")+
+  geom_bar()+
+  scale_y_continuous(labels = scales::percent)
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+As can be seen from the plots, post 2009, the quality of the loans has clearly improved with a shift towards the left end of the credit rating scale (left 
+being higher credit rating)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_1}
+#Credit Grades post 2009 have shifted towards the middle
+#The loans have been grouped by Year of origination and by credit rating to 
+#study the effect on credit ratings across the years
+loans1.by_grade_year<-loans1 %>%
+  group_by(YearofOrigination, ProsperRating..Alpha.) %>%
+  summarize(n=n()) %>%
+  mutate(perc = n/sum(n))
+
+plot("ProsperRating..Alpha.", 
+     "perc", 
+     loans1.by_grade_year, 
+     "Credit Rating", 
+     "Percent")+
+  geom_bar(stat = 'identity')+
+  facet_wrap(~loans1.by_grade_year$YearofOrigination, scales = 'free_y')+
+  scale_y_continuous(labels = scales::percent)+
+  geom_text(stat = 'identity', 
+            aes(label = sprintf("%1.0f%%", 100*perc), vjust = 0.1),
+            size=rel(2.7))
+
+#Terms have also improved with movement towards long term loans
+# The loans have been grouped by year of origination and by term to study the effect on term of the loans across the years
+loans1.by_year<-loans1 %>%
+ group_by(YearofOrigination, Term) %>%
+ summarize(n=n()) %>%
+ mutate(perc = n/sum(n))
+
+plot("Term", 
+     "perc", 
+     loans1.by_year, 
+     "Term of the Loan (In Months)", 
+     "Percent")+
+  geom_bar(stat = 'identity')+
+  facet_wrap(~loans1.by_year$YearofOrigination, scales = 'free_y')+
+  scale_y_continuous(labels = scales::percent)+
+  geom_text(stat = 'identity', 
+            aes(label = sprintf("%1.0f%%", 100*perc), vjust = 0.1),
+            size=rel(2.7))
+```
+
+The plots indicate that overall, Credit ratings have shifted from a skewed distribution towards a normal distribution, with a large concentration of loans in the middle range of credit ratings
+
+We next examine a few key characteristics of the loans:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_2}
+ggplot(aes(x=BorrowerRate), data =loans1)+
+  geom_histogram(binwidth=0.005)+
+  scale_x_continuous(breaks=seq(0,0.4,0.05))+
+  labs(x="Borrower Rate", y="Frequency")
+```
+
+As can be seen from the histogram, the distribution of frequencies is skewed 
+with a large number of loans with very high borrowing rates. Further study needs to be conducated to analyze how borrower rates are decided
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_3}
+# Effect of Verifiable source of Income and Home ownership
+plot("IncomeVerifiable", 
+     "BorrowerRate", 
+     subset(loans, !is.na(ProsperRating..Alpha.)), 
+     "Income is Verifiable", "Borrower Rate")+
+  geom_boxplot()+
+  coord_flip()
+
+plot("IsBorrowerHomeowner", 
+     "BorrowerRate", 
+     subset(loans, !is.na(ProsperRating..Alpha.)), 
+     "Borrower is Home Owner", 
+     "Borrower Rate")+
+  geom_boxplot()+
+  coord_flip()
+```
+
+As can be seen from the box-plots above:
+
+* A verifiable income results in a lower borrowing rate on average. This is because, lenders are more assured as to whether a given borrower can make the monthly payments and therefore, can factor that information into deciding the interest rate
+* Home owners also typically have lower rates. This is because:
+    - Ownership of a home could indicate that borrowers are capable of taking 
+on a financial burden responsibly
+    - The home can be used explicitly/implicitly as collateral for a loan and thus lower the rate
+
+We now throw some light on borrower characteristics and loan characteristics 
+that can faciliate further analysis
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_4}
+# Income Range
+bar_plot("IncomeRange", 
+         loans1, 
+         "Income Range", 
+         "Bar plot of Income Range")
+
+# Bar graphs of Loan Status
+bar_plot("LoanStatus", 
+         loans1, 
+         "Loan Status", 
+         "Bar plot of Loan Status")
+
+#Bar Plot of Listing Categories
+bar_plot("fct_infreq(ListingCategory..numeric.)", 
+         loans1, 
+         "Listing Category", 
+         "Bar Plot of Listing Category")
+
+```
+
+As can be seen from the charts above:
+
+* Income distribution of the borrowers is biased towards higher income levels with a healthy 20% of the loans being given to borrowers with more than $75,000 income
+* This is clearly reflected in the status of the loans as well - only 4% are in default and less than 2% have delayed payments; only 10% has been charged off
+* The listing category shows an interesting trend. Over 60% of the loans are categorized as debt consolidation. This could be because borrowers got a lower effective interest rate on Prosper and therefore chose to consolidate all their other loans by paying them out with a loan from Prosper.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_5}
+# Bar Plot of States of Loans
+plot("fct_infreq(BorrowerState)", 
+     "..count../sum(..count..)", 
+     subset(loans, !is.na(BorrowerState)), 
+     "Borrower State", 
+     "Percent")+
+  geom_bar()+
+  scale_y_continuous(labels = scales::percent)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+#Geographic Map of loans
+#The loans have been gruped by year of origination and state in which they 
+#have been issues in order to study the loan behaviour across states and 
+#across time
+loans1$StateList<-tolower(state.name[loans1$BorrowerState])
+loans1.by_state<-loans1 %>%
+  group_by(YearofOrigination, StateList) %>%
+  summarize(median_rate = median(BorrowerRate), n = n())
+
+# Number of loans by state
+ggplot(aes(map_id = StateList), data = loans1.by_state)+
+  geom_map(aes(fill = n), map = fifty_states)+
+  expand_limits(x = fifty_states$long, y = fifty_states$lat)+
+  coord_map()+
+  scale_x_continuous(breaks = NULL)+
+  scale_y_continuous(breaks = NULL)+
+  borders("state", color = "white")+
+  scale_color_brewer(type = 'seq')+
+  labs(x = "", y = "")+
+  theme_bw()+
+  facet_wrap(~YearofOrigination)+
+  ggtitle("Number of loans by State")
+
+# Median Borrower Rate by state
+ggplot(aes(map_id = StateList), data = loans1.by_state)+
+  geom_map(aes(fill = median_rate), map = fifty_states)+
+  expand_limits(x = fifty_states$long, y = fifty_states$lat)+
+  coord_map()+
+  scale_x_continuous(breaks = NULL)+
+  scale_y_continuous(breaks = NULL)+
+  borders("state", color = "white")+
+  scale_color_brewer(type = 'seq')+
+  labs(x = "", y = "")+
+  theme_bw()+
+  facet_wrap(~YearofOrigination)+
+  ggtitle("Borrower Rate by State")
+```
+
+From the graph on distribution by state, it can be seen that California is the largest with 15% of the share of all loans in the dataset. The trend across 
+years and across states can be seen in the next set of Choropleths.
+
+* California shows a similar trend each year with a large number of loans
+* Utah, Ohio, Oklohoma and Georgia are other such states which have a large number of loans
+* The loans gradually seem to be getting geographically diversified with each passing year
+
+The second plot shows the median borrower rate by state across the years. One very interesting trend is that the borrower rates shot up between 2009 and 2011 across the country. They gradually improve over the years. Washington appears 
+to be the state worst hit. These changes could be due to the fallout of the global financial crisis. 
+
+What is intriguing is that this was a period when interest rates were being lowered by the Federal Reserve
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots}
+#Box Plots of Borrower Rates across credit rating
+plot("ProsperRating..Alpha.", 
+     "BorrowerRate", 
+     subset(loans, !is.na(ProsperRating..Alpha.)), 
+     "Borrower Rate", 
+     "Credit Rating")+
+  geom_boxplot()+
+  coord_flip()+
+  stat_summary(fun.y = mean, geom = 'point', shape = 4)
+
+#Box Plots of Borrower Rates across terms
+plot("Term", 
+     "BorrowerRate", 
+     loans1, 
+     "Term", 
+     "Borrower Rate")+
+  geom_boxplot()+
+  stat_summary(fun.y = mean, geom='point', shape=4)
+
+#Box Plots of Borrower Rates across income range
+plot("IncomeRange", 
+     "BorrowerRate", 
+     loans1, 
+     "Income Range", 
+     "Borrower Rate")+
+  geom_boxplot()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+
+Setting aside the outliers, it is very apparent from the box-plot of Borrower Rate versus Credit Rating that a lower credit rate results in a higher cost of borrowing. This is because of the higher risk of default associated with a 
+poorer credit rating. 
+
+The mean borrowing rate for each credit rating is typically to the right of the median credit rating, indicating a few outliers with very high borrowing rate. This proves that Credit Rating alone cannot determine the borrower rate. There 
+is something more involved.
+
+The borrowing rate is typically higher for longer term loans. This can be seen 
+in the difference in rates between 12 month and 36 month loans, but not so much between the 36 month and 60 month loans.
+
+The median borrowing rate is lower, the higher the income bracket of the borrower. This is probably because, the higher the income, the more likely the borrower will pay back the loan and hence the lower the risk of default, resulting in a reduction in the interest rate
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_2}
+#Return versus Credit Rating
+plot("ProsperRating..Alpha.", 
+     "EstimatedReturn", 
+     loans1, 
+     "Credit Rating", 
+     "Estimated Return")+
+  geom_boxplot()
+
+# Investors versus Credit Rating
+plot("ProsperRating..Alpha.", 
+     "Investors", 
+     loans1, 
+     "Credit Rating", 
+     "Investors")+
+  geom_boxplot()
+```
+
+Credit Rating influences returns. In general, a higher risk should be 
+associated with a higher return in order to compensate investors for the risk.
+
+The first box plot shows this trend clearly, with lower rated loans attracting higher returns
+
+The second box plot shows how this trend effects investor behaviour. 
+
+* As can be seen from the plot, investors in the AA-C range appear to be risk averse with fewer investors on average investing in lower rated loans
+* However, the trend is reversed at very low credit ratings as risk seeking speculators actively invest in the loans
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_3}
+# Credit Rating and Loan Status
+# The loans have been grouped by loan status and credit rating to study the effect of credit rating on loan performance
+loans1.by_rating<-loans1 %>%
+  group_by(LoanStatus, ProsperRating..Alpha.) %>%
+  summarize(n = n()) %>%
+  mutate(perc = n/sum(n))
+
+plot("ProsperRating..Alpha.", 
+     "perc", 
+     loans1.by_rating, 
+     "Credit Rating", 
+     "Percent")+
+  geom_bar(stat = 'identity')+
+  facet_wrap(~loans1.by_rating$LoanStatus, scales = 'free_y')+
+  scale_y_continuous(labels = scales::percent)+
+  geom_text(stat = 'identity', 
+            aes(label = sprintf("%1.0f", 100*perc), vjust = 0.3),
+            size=rel(2.7))
+
+# Estimated Loss versus Credit Score
+# Both the lower and upper limits of credit score have been considered to see 
+#if there is any difference in trend. There isn't much difference and 
+#therefore for all subsequent analysis, the lower range limit has been used.
+
+p1<-plot("as.numeric(CreditScoreRangeLower)", 
+         "EstimatedLoss", 
+         loans1, 
+         "Credit SCore (Lower)", 
+         "Estimated Loss")+
+  geom_point(alpha = 1/30)+
+  geom_line(stat='summary', fun.y=median)
+
+p2<-plot("as.numeric(CreditScoreRangeUpper)", 
+         "EstimatedLoss", 
+         loans1, 
+         "Credit Score (Upper)", 
+         "Estimated Loss")+
+  geom_point(alpha = 1/30)+
+  geom_line(stat='summary', fun.y=median)
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+As can be seen from the graph, the higher rated loans are doing reasonably well with little delays or charge offs. However, the lower rated loans appear to be having problems.
+
+* 25% of those loan payments are due for over 4 months
+* 20% loan payments are due for over 3 months
+* 20% loan payments are due for over 2 months
+
+Estimated Loss versus Credit Score shows a clear trend. With a higher credit score, risk of default is lower and thefore, estimated loss is lower.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_5}
+# Recommendations and Investors relationship
+plot("as.factor(Recommendations)", 
+     "Investors", 
+     subset(loans1, Recommendations!=0), 
+     "Recommendations", 
+     "Investors")+
+  geom_boxplot()
+
+# Size of loan and investors
+# The loans have been grouped by loan original amount to check if large loans attract more investors or few large investors
+loans1.by_originalamount<-subset(loans1, Investors>1) %>%
+  group_by(LoanOriginalAmount) %>%
+  summarize(mean_investors = mean(Investors), median_investors = median(Investors), n = n())
+
+# EFfect of Loan original amount on number of investors
+plot("LoanOriginalAmount", 
+     "median_investors", 
+     loans1.by_originalamount, 
+     "Loan Original Amount", 
+     "Median Investors")+
+  geom_point()+
+  geom_smooth()
+```
+
+The first plot shows the relationship between number of investors in the loan 
+and number of recommendations received by the borrower. While one would expect that more recommendations would imply that the borrower is trustworthy and 
+invite more investors, the data doesn't indicate that to be the case
+
+The second plot shows the relationship between loan size and the median number 
+of investors in that loan. One interesting trend here is that, the number of investors increases approximately linearly with the size of the loan. It is to 
+be noted that the data has been modified to exclude loans with only one investor
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots}
+# Effect of loan term and credit rating on borrower rate
+plot("Term", 
+     "BorrowerRate", 
+     loans1, 
+     "Term", 
+     "Borrower Rate")+
+  geom_boxplot()+
+  facet_wrap(~ProsperRating..Alpha., scales = 'free_y')
+```
+
+The above plot incorporates the credit rating, term and borrower rate and provides an interesting insight into the data. As expected, a higher credit rating attracts a lower interest rate and a longer term attracts a higher interest rate. However, the effect of term length on interest rate is reduced 
+as credit rating is lowered. For example, the impact of a longer term on 
+interest rate is not as prominent in D and E graded loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_2}
+# EFfect of debt to income ratio, home ownership and income verifiability on number of loans
+ggplot(aes(x=DebtToIncomeRatio), 
+       data = subset(loans1, DebtToIncomeRatio <=1))+
+  geom_freqpoly(aes(color=IsBorrowerHomeowner))+
+  facet_wrap(~IncomeVerifiable, scales = 'free', ncol=1)+
+  labs(x='Debt to Income Ratio', y='Frequency')+
+  ggtitle('Split of data based on Income Verifiable or not')
+
+# Effect of credit rating, home ownership, and income verifiability on debt to income ratio at low levels
+plot("ProsperRating..Alpha.", 
+     "DebtToIncomeRatio", 
+     subset(loans1, DebtToIncomeRatio <=1.0, IncomeVerifiable=TRUE), 
+     "Credit Rating", 
+     "Debt to Income Ratio")+
+  geom_boxplot()
+```
+
+The data has been restricted to debt to income ratios less than 1 because the datapoints are above are few and widely dispersed, thereby distorting the study
+
+From the first plot, we can see that Borrowers whose income cannot be verified are not permitted to take on debt exceeding ~0.6 of their stated Income. 
+
+From the second plot, after getting rid of outliers, we can see that in case 
+the income source is verifiable, then home owners can taken on a loan with a higher debt to income ratio and still get a good credit rating.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_3}
+# Effect of income range, credit rating on borrower rate
+ggplot(aes(y=BorrowerRate, x=IncomeRange, color=ProsperRating..Alpha.), 
+       data = loans1)+
+  geom_jitter(alpha = 1/20)+
+  guides(colour = guide_legend(title = "Credit Rating",
+                               override.aes = list(alpha = 1)))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))+
+  scale_color_brewer(type='seq')+
+  labs(x="Income Range", y="Borrower Rate")+
+  ggtitle("Borrower Rate vs Income Range & Credit Rating")
+```
+
+Firstly, jitter has been used because, the income levels are discrete categories and for each income level, we would get a series of points lined up vertically making visualization difficult.
+
+Secondly, alpha = 1/20 has been used because there is clear overplotting due to several loans having the same or very close borrowing rates
+
+As can be seen from the plot, income does not seem to be as important a factor for determining borrower rate as credit rating is. There is a range of credit ratings at all levels of income including the highest of $100,000+.
+However, there are distinct bands of borrowing rates for each credit rating. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_4}
+# Effect of credit score, employment status on borrower rate
+
+plot("CreditScoreRangeLower", 
+     "BorrowerRate", 
+     subset(loans1, 
+            (EmploymentStatus!="Employed")&
+              (EmploymentStatus!="Other")&
+              (EmploymentStatus!="Self-employed")), 
+     "Credit Score Range (Lower)", 
+     "Median Borrower Rate")+
+  geom_line(aes(color = EmploymentStatus, linetype = EmploymentStatus), 
+            size = 1.0, stat = 'summary', fun.y = median)+
+  ggtitle("Borrower Rate vs Credit Score")
+```
+
+From the plot of median borrower rate versus credit score, we can observe a 
+clear trend. On the one hand, an increase in credit score lowers the borrowing rate for the loan. On the other other hand, borrowing rate varies by employment status as well. While full-time employees get the best rates, the rate 
+gradually goes up as we move towards part-time, retired and unemployed.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_5}
+# The loans have been grouped by credit score and income range. Prior to that 
+#the data was initially restricted to include only employed individuals 
+#earning an income. 
+loans1.by_grade_income<-subset(loans1, 
+                               (IncomeRange!= "$0" & 
+                                  IncomeRange!= "Not employed") &
+                                 (IncomeVerifiable=TRUE)) %>%
+  group_by(CreditScoreRangeLower, IncomeRange) %>%
+  summarize(median_rate = median(BorrowerRate), n = n())
+
+# Relationship between credit score, income range and borrower rate
+ggplot(aes(x=CreditScoreRangeLower,y=IncomeRange, fill=median_rate),
+       data=loans1.by_grade_income)+
+  geom_tile()+
+  scale_fill_distiller(palette="RdBu", direction = -1)+
+  labs(x="Credit Score", y="Income Range")+
+  ggtitle("Borrower Rate by Income Range & Credit Score")
+```
+
+The level plot shows an interesting trend. The median borrower rate is effected by both Income Range & Credit Score as evident in the earlier plots. For a lower credit score, we would expect the borrowing rate to be higher. However, in case the income levels are higher, that compensates for poor credit score to some extent, thereby lowering the borrowing rate.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_6}
+# Effect of Credit score, Income range, Income verifiability on estimated loss 
+plot("CreditScoreRangeLower", 
+     "EstimatedLoss", 
+     loans1, 
+     "Credit Score Range (Lower)", 
+     "Median Estimated Loss")+
+  geom_line(aes(color = IncomeRange, linetype = IncomeRange), 
+            size = 1.0, stat = 'summary', fun.y = median)+
+  facet_wrap(~IncomeVerifiable)+
+  ggtitle("Estimated Loss vs Credit Score against 
+          Income Verifiability and Income Range")
+```
+
+The plot of median estimated loss vs credit score shows an interesting trend. 
+In the absence of a verifiable source of income, there is no discernible pattern in the data. However, in case there is a verifiable source of income, for a credit score greater than 650, there is a very clear trend in the data. Higher credit score implies lower estimated loss. Furthermore, higher income also implies lower estimated loss. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots_7}
+#Borrower Rate versus Credit Rating
+plot("ProsperRating..Alpha.", 
+     "BorrowerRate", 
+     loans1, 
+     "Credit Rating", 
+     "Borrower Rate")+
+  geom_jitter(aes(color = Term), alpha = 1/20)+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+```
+
+Firstly, jitter has been applied because the credit ratings are categorical variables and jitter can help make the effect more visually apparent
+
+Secondly, alpha = 1/20 has been applied becuase there is a large amount of overplotting resulting from several loans with same credit rating having the 
+same or very close borrower rates.
+
+Two things are very clear from the plot:
+
+* There are distinct bands for each term length for any given credit rating indicating that longer term is typically associated with higher interest rates
+* The bands begin to overlap as the credit rating falls, indicating that at 
+lower ratings additional factors are taken into account before assigning rating
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+ggplot(aes(map_id = StateList), data = loans1.by_state)+
+  geom_map(aes(fill = median_rate), map = fifty_states)+
+  expand_limits(x = fifty_states$long, y = fifty_states$lat)+
+  coord_map()+
+  scale_x_continuous(breaks = NULL)+
+  scale_y_continuous(breaks = NULL)+
+  borders("state", color = "white")+
+  scale_color_brewer(type= 'seq')+
+  labs(x = "", y = "")+
+  theme_bw()+
+  facet_wrap(~YearofOrigination)+
+  ggtitle("Borrower Rate by State")
+```
+
+### Description One
+
+This plot shows the wide variation in borrower rates both across space and 
+across time. Some states have significantly higher rates than others and rates across the country increased between 2009 and 2011. This graph suggests that further exploration of what variables effect interest rates is important.
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Two}
+ggplot(aes(y=BorrowerRate, x=IncomeRange, color=ProsperRating..Alpha.), 
+       data = loans1)+
+  geom_jitter(alpha = 1/20)+
+  guides(colour = guide_legend(title = "Credit Rating",
+                               override.aes = list(alpha = 1)))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))+
+  scale_color_brewer(type='seq')+
+  labs(x="Income Range", y="Borrower Rate")+
+  ggtitle("Borrower Rate vs Income Range & Credit Rating")
+```
+
+### Description Two
+
+This plot shows the relative importance of credit rating and income levels in determining the interest rate charged to borrowers. 
+
+* From the plot, it is very clear that credit rating is a much more important factor than income levels 
+* Even at very high income levels, there is a spread of credit ratings corresponding a spread of borrower rates
+* The effect of credit rating is very clear, with there being distinct bands of rates depending on credit rating
+* As credit ratings worsen, the bands of interest rates begin to increasingly overlap, indicating that additional factors are responsible in determining rates
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+plot("CreditScoreRangeLower", 
+     "BorrowerRate", 
+     subset(loans1, (EmploymentStatus!="Employed")&
+              (EmploymentStatus!="Other")&
+              (EmploymentStatus!="Self-employed")), 
+     "Credit Score Range (Lower)", 
+     "Median Borrower Rate")+
+  geom_line(aes(color = EmploymentStatus, linetype = EmploymentStatus), 
+            size = 1.0, stat = 'summary', fun.y = median)+
+  ggtitle("Borrower Rate vs Credit Score")
+```
+
+### Description Three
+
+This graph shows the effect of two other variables that effect borrower rates. While the credit rating is a loan characteristic, credit scores are borrower characteristics.
+
+* With increasing credit scores, the median borrower rate gets lowered 
+indicating that credit scores are an important factor in determining interest rates
+* Employment status is another very important factor - Full-time employees get better rates than part-time employees, who get better rates than retirees and unemployed individuals
+
+------
+
+# Reflection
+
+* The data analysis exercise revealed some interesting insights into the variables that effect the borrower rates.
+    * These variables include Credit Rating, Credit Scores, Income Range, Employment Status, Term of the loan and Home Ownership
+* The biggest challenge was the large number of variables in itself
+    * Choosing which variables to explore and studying the interactions was a challenge
+    * Some of the variables could be related to a third variable by virtue of 
+  their relationship with each other. Identifying and separating such relationships is a challenge which needs more information on related variables
+* Some very interesting and unexpected observations were made in this analysis:
+    * Over 60% of the loans were for debt consolidation, indicating that the rates on P2P lending were much more favorable
+    * Interest rates across the country were rising between 2009-11 indicating a potential concern about credit worthiness of borrowers. However, it was surprising that this was a time when the Federal Reserve lowered interest rates
+    * Another interesting factor observed was that, while the income levels were less important than credit scores/credit ratings in determining borrower rates, 
+  a higher income level compensated somewhat for a poor credit score and could fetch a better rate. 
+  
+### Scope for future work
+
+There is plenty of scope for future work based on this dataset:
+
+* Given the large number of variables effecting borrower rates, a model can be developed to arrive at a relationship between borrower rate and the different variables and this model can be used to predict future borrower rates based on these characteristics
+
+* Given that a handful of states account for most of the loans, a state level analysis of the data can be conducted to study how typical borrower characteristics vary across states
+
+* There are lots of variables associated with loan performance such as Fees, Losses, Payments etc. These variables have not been studied here and could provide valuable insight into how a loan behaves based on some characteristics
